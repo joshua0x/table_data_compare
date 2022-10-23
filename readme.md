@@ -1,4 +1,4 @@
-# mysql data compare
+# mysql data compare 👏
 
 ## 基于主键 对比不同mysql database  table 的数据
 - 前提条件：对比的表名 和 表结构一致。
