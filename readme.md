@@ -53,7 +53,7 @@
 
 
 ## 使用方式
-- step1 : git clone && go build 
+- step1 : git clone && go mod tidy && go build 
   - 生成schema ddl 定义 ，生成的.go 文件位于 ./tab_models/ 
     - ./table_data_compare -cmd=genmodel 
 - step2 : 对比
