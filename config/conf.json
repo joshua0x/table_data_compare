@@ -1,0 +1,8 @@
+{
+
+  "host_a": "user:password@(localhost:3306)/src_db?parseTime=true",
+  "host_b": "user:password@(localhost:3306)/dst_db?parseTime=true",
+  "table_list": ["user_info_str","user_info"],
+  "scantable_batch_size": 1000,
+  "scan_sleep_period": 0
+}
