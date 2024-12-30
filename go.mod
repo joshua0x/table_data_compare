@@ -5,9 +5,11 @@ go 1.17
 require (
 	github.com/blastrain/vitess-sqlparser v0.0.0-20201030050434-a139afbb1aba
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/gomodule/redigo v1.9.2
 	github.com/jinzhu/inflection v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.4
+	github.com/wxpusher/wxpusher-sdk-go v1.0.3
 	gorm.io/driver/mysql v1.4.3
 	gorm.io/gorm v1.24.0
 )

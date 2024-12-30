@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 )
-//??
+
 type Tabler interface {
 	TableName() string
 	RecordList() interface{}
@@ -16,58 +16,52 @@ type Tabler interface {
 	PkName() string
 }
 
-//reported-results ??,pk-,parser-checks,
 type Splited struct {
-	//?done,Id maybe string
 	OnlyInSrcIdList []interface{}
 	OnlyInDstIdList []interface{}
-	NeedUpdate []interface{}
+	NeedUpdate      []interface{}
 }
 
-func CompareTable(ctx context.Context,table Tabler,cfg *config.DbConfig) *TableLevelDiff{
+func CompareTable(ctx context.Context, table Tabler, cfg *config.DbConfig) *TableLevelDiff {
 	report := new(TableLevelDiff)
 	report.TableName = table.TableName()
 
 	srcpkList := table.RecordList()
 	dstpkList := table.RecordList()
 
-	srcdb,dstdb := GetDb()
+	srcdb, dstdb := GetDb()
 
 	srcdb.Table(table.TableName()).Select(table.PkName()).Find(srcpkList)
 	dstdb.Table(table.TableName()).Select(table.PkName()).Find(dstpkList)
-	res := divideByGroup(table.TableName(),srcpkList,dstpkList)
+	res := divideByGroup(table.TableName(), srcpkList, dstpkList)
 
-	diff := checkdiff(ctx,table,res.NeedUpdate,cfg.ScantablebatchSize,cfg.ScanSleepPeriod)
+	diff := checkdiff(ctx, table, res.NeedUpdate, cfg.ScantablebatchSize, cfg.ScanSleepPeriod)
 	report.RowGotDiff = diff
-	setUpdiff(report,&res)
+	setUpdiff(report, &res)
 	return report
 }
 
-func getPkList(src interface{},pkOffset int) map[interface{}]bool {
+func getPkList(src interface{}, pkOffset int) map[interface{}]bool {
 	srcMap := map[interface{}]bool{}
 
-	//must-be-slice ?, []IdObj, return first-field ,Ptr *[]-> [],
 	convsrc := reflect.ValueOf(src).Elem()
-	for k:=0 ; k <  convsrc.Len() ;k++{
+	for k := 0; k < convsrc.Len(); k++ {
 		structObj := convsrc.Index(k).Elem() // struct,
 		idVal := structObj.Field(pkOffset)
-		//convert to uint64 ??,
 		idInt := idVal.Interface()
 		srcMap[idInt] = true
 	}
 	return srcMap
 }
 
-func divideByGroup(tname string,src, dst interface{}) Splited {
+func divideByGroup(tname string, src, dst interface{}) Splited {
 	ret := Splited{OnlyInSrcIdList: []interface{}{}, OnlyInDstIdList: []interface{}{}, NeedUpdate: []interface{}{}}
 
 	srcMap := map[interface{}]bool{}
 	dstMap := map[interface{}]bool{}
-	//must-be-slice ?, []IdObj, return first-field ,Ptr *[]-> [],
 	pkOffset := getPkOffsetFromCache(tname)
-	srcMap = getPkList(src,pkOffset)
-	dstMap = getPkList(dst,pkOffset)
-	//Pk-is-string or int ??,
+	srcMap = getPkList(src, pkOffset)
+	dstMap = getPkList(dst, pkOffset)
 	for k, _ := range srcMap {
 		if _, exist := dstMap[k]; !exist {
 			ret.OnlyInSrcIdList = append(ret.OnlyInSrcIdList, k)
@@ -89,7 +83,6 @@ func convertListToMap(srcList reflect.Value) map[interface{}]interface{} {
 	ret := map[interface{}]interface{}{}
 
 	for k := 0; k < srcList.Len(); k++ {
-		//range-over-fields,
 		pk := getPk(srcList.Index(k).Interface())
 		ret[pk] = srcList.Index(k).Interface()
 	}
@@ -101,7 +94,7 @@ func getColName(tag string) string {
 		return ""
 	}
 	if tagArr := strings.Split(tag, ";"); len(tagArr) >= 1 {
-		spl := strings.Split(tagArr[0],":")
+		spl := strings.Split(tagArr[0], ":")
 		if spl[0] == "column" {
 			return spl[1]
 		}
@@ -110,7 +103,7 @@ func getColName(tag string) string {
 }
 
 func checkPk(tag string) bool {
-	return strings.Index(tag,"primary_key") >= 0
+	return strings.Index(tag, "primary_key") >= 0
 }
 
 func getPkOffset(src interface{}) int {
@@ -142,22 +135,19 @@ func getPk(src interface{}) interface{} {
 	return nil
 }
 
-func checkdiff(ctx context.Context,table Tabler,srcPkIdList []interface{},batchsize,sleepPeriod int) []*RowLevelDiff{
+func checkdiff(ctx context.Context, table Tabler, srcPkIdList []interface{}, batchsize, sleepPeriod int) []*RowLevelDiff {
 	diff := []*RowLevelDiff{}
 
 	start := 0
-	srcdb,dstdb := GetDb()
-	//sort.Slice(srcPkIdList, func(i, j int) bool {
-	//	return srcPkIdList[i] < srcPkIdList[j]
-	//})
+	srcdb, dstdb := GetDb()
 	colList := getColListFromCache(table.TableName())
 	round := 0
 	totalRound := len(srcPkIdList) / batchsize
 
 	for {
 		round++
-		if round % 10 == 0 {
-			fmt.Printf("table:%v ts:%v progess:%v/%v=%.2f%% \n",table.TableName(),time.Now().Format(time.Stamp),round,totalRound,100*float32(round) / float32(totalRound ))
+		if round%10 == 0 {
+			fmt.Printf("table:%v ts:%v progess:%v/%v=%.2f%% \n", table.TableName(), time.Now().Format(time.Stamp), round, totalRound, 100*float32(round)/float32(totalRound))
 		}
 		if start >= len(srcPkIdList) {
 			break
@@ -179,7 +169,7 @@ func checkdiff(ctx context.Context,table Tabler,srcPkIdList []interface{},batchs
 			panic(err)
 		}
 
-		if err := dstdb.Table(table.TableName()).Where( table.PkName() + " in (?"+strings.Repeat(",?", len(groupList)-1)+")", groupList...).Find(dstList).Error; err != nil {
+		if err := dstdb.Table(table.TableName()).Where(table.PkName()+" in (?"+strings.Repeat(",?", len(groupList)-1)+")", groupList...).Find(dstList).Error; err != nil {
 			panic(err)
 		}
 		//compared-slice-obj,长度不一致 异常情况，需要考虑，
@@ -188,7 +178,6 @@ func checkdiff(ctx context.Context,table Tabler,srcPkIdList []interface{},batchs
 
 		srcMap := convertListToMap(srcListConverted)
 		dstMap := convertListToMap(dstListConverted)
-		//debug-modes
 
 		for pk, record := range srcMap {
 
@@ -196,16 +185,15 @@ func checkdiff(ctx context.Context,table Tabler,srcPkIdList []interface{},batchs
 				continue
 			} else {
 
-				updmap := compareRow(ctx, record, dstRecord,colList)
+				updmap := compareRow(ctx, record, dstRecord, colList)
 				updmap.PkId = pk
 				if len(updmap.ColDiffs) > 0 {
-					diff = append(diff,updmap)
+					diff = append(diff, updmap)
 				}
-				//
 			}
 		}
 		start += batchsize
-		time.Sleep(time.Millisecond*time.Duration(sleepPeriod))
+		time.Sleep(time.Millisecond * time.Duration(sleepPeriod))
 	}
 	return diff
 
@@ -218,22 +206,20 @@ func getRealType(typ reflect.Type) reflect.Type {
 	return typ
 }
 func getRealValue(val reflect.Value) reflect.Value {
-	for val.Kind() == reflect.Ptr  {
+	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
 	return val
 }
 
-func compareRow(ctx context.Context, src, dst interface{},colList []string) *RowLevelDiff {
+func compareRow(ctx context.Context, src, dst interface{}, colList []string) *RowLevelDiff {
 	m := new(RowLevelDiff)
 	m.ColDiffs = []*ColDiff{}
 	srcv := getRealValue(reflect.ValueOf(src))
 	dstv := getRealValue(reflect.ValueOf(dst))
 
 	for i := 0; i < srcv.NumField(); i++ {
-		//todo,get-column-name-cached-in-mem ??,
 		fieldName := colList[i]
-		//
 		srcFieldV := srcv.Field(i)
 		dstFieldV := dstv.Field(i)
 		if !srcFieldV.CanInterface() || !dstFieldV.CanInterface() {
@@ -242,7 +228,7 @@ func compareRow(ctx context.Context, src, dst interface{},colList []string) *Row
 		if reflect.DeepEqual(srcFieldV.Interface(), dstFieldV.Interface()) {
 		} else {
 			//m[fieldName] = srcFieldV.Interface()
-			m.ColDiffs = append(m.ColDiffs,&ColDiff{
+			m.ColDiffs = append(m.ColDiffs, &ColDiff{
 				ColName: fieldName,
 				SrcVal:  srcFieldV.Interface(),
 				DstVal:  dstFieldV.Interface(),
