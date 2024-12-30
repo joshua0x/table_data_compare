@@ -1,6 +1,6 @@
 # mysql data compare 👏[English-Version](readme-en.md)
 
-## 基于主键 对比不同mysql database  table 的数据
+## 基于主键 对比不同mysql database  table 的数据(适应于数据迁移场景中使用)
 - 前提条件：对比的表名 和 表结构一致。
 
 - 配置需要对比的dsn 连接信息。如下所示, 则支持对比 host_a 和 host_b 的 user_info ,user_mail_token 数据。
